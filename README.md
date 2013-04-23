@@ -25,8 +25,7 @@ Schema-Free Example
 The schema-free parser converts python expressions to mongodb queries with no schema enforcment:
 
 	>>> import pql
-	>>> parser = pql.SchemaFreeParser()
-	>>> parser.parse("a > 1 and b == 'foo' or not c.d == False")
+	>>> pql.find("a > 1 and b == 'foo' or not c.d == False")
 	{'$or': [{'$and': [{'a': {'$gt': 1}}, {'b': 'foo'}]}, {'$not': {'c.d': False}}]}
 
 Schema-Aware Example
@@ -35,22 +34,21 @@ Schema-Aware Example
 The schema-aware parser validates fields exist:
 
 	>>> import pql
-	>>> parser = pql.SchemaAwareParser({'a': pql.DateTimeField()})
-	>>> parser.parse('b == 1') 
+	>>> pql.find('b == 1', schema={'a': pql.DateTimeField()}) 
 	Traceback (most recent call last):
 		...
 	pql.ParseError: Field not found: b. options: ['a']
 	
 Validates values are of the correct type:
 
-	>>> parser.parse('a == 1')
+	>>> pql.find('a == 1', schema={'a': pql.DateTimeField()})
 	Traceback (most recent call last):
 		...
 	pql.ParseError: Unsupported syntax (Num).
 	
 Validates functions are called against the appropriate types:
 
-	>>> parser.parse('a == regex("foo")')
+	>>> pql.find('a == regex("foo")', schema={'a': pql.DateTimeField()})
 	Traceback (most recent call last):
 		...
 	pql.ParseError: Unsupported function (regex). options: ['date', 'exists', 'type']
@@ -113,11 +111,11 @@ Aggregation Queries
 Example
 -------
 
-	>>> from pql.aggregation import AggregationParser
-	>>> AggregationParser().parse('a + b / c - 3 * 4 == 1')
-	{'$eq': [{'$subtract': [{'$add': ['$a', {'$divide': ['$b', '$c']}]}, {'$multiply': [3, 4]}]}, 1]}
-	>>> AggregationParser().parse('a if b > 3 else c')
-	{'$cond': [{'$gt': ['$b', 3]}, '$a', '$c']}
+	>>> from pql import project, group, match, limit, skip, unwind, sort
+	>>> project(foo='a + b / c - 3 * 4 == 1')
+	{'$project': {'foo': {'$eq': [{'$subtract': [{'$add': ['$a', {'$divide': ['$b', '$c']}]}, {'$multiply': [3, 4]}]}, 1]}}}
+	>>> group(_id='a if b > 3 else c', total='sum(bar)')
+	{'$group': {'_id': {'$cond': [{'$gt': ['$b', 3]}, '$a', '$c']}, 'total': '$bar'}}
 
 Referencing Fields
 ------------------
@@ -190,3 +188,4 @@ TODO
 2. Add a declarative schema generation syntax.
 3. Add support for geospatial queries.
 4. Add support for $where.
+
